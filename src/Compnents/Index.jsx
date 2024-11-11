@@ -70,7 +70,7 @@ const Index = () => {
             ))}
           </ButtonGroup>
         </Box>
-
+{/* buttons group */}
         <Box sx={{ mt: 3 }}>
           {selected === 'Upload Docs' && <FileUpload />}
           {selected === 'Documents List' && <TableList  setSelected={setSelected}/>}
