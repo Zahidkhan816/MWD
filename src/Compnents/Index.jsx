@@ -1,4 +1,3 @@
-/* eslint-disable no-confusing-arrow, no-promise-executor-return, no-shadow, consistent-return, operator-linebreak, object-curly-newline, no-tabs, indent */
 
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
