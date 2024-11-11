@@ -23,7 +23,6 @@ const FileUpload = () => {
         }));
         setFiles(newFiles);
 
-        // Simulate upload progress
         const interval = setInterval(() => {
             setUploadProgress((prev) => {
                 if (prev >= 100) {
@@ -127,7 +126,6 @@ const FileUpload = () => {
                                     </Box>
                                     <IconButton onClick={() => handleDelete(index)} color="error">
                                     <img src={DellIcon}/>
-
                                     </IconButton>
                                 </Paper>
                             ))}
