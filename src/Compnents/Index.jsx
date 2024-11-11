@@ -33,7 +33,7 @@ const Index = () => {
           sx={{ p: 3 }}
         >
           <Typography variant="h5" fontWeight={600} fontSize={20}>
-            Docs Uploader
+          POC
           </Typography>
         </Stack>
 
