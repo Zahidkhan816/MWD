@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Card,
   CardContent,
@@ -11,8 +11,10 @@ import {
   Grid,
   Button
 } from '@mui/material';
-
-const TableList = () => {
+const TableList = ({setSelected}) => {
+ const handleTab=()=>{
+  setSelected('Reports')
+ }
   const documentData = [
     {
       name: "Assistance's Knowledge Base",
@@ -132,7 +134,7 @@ const TableList = () => {
                     <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>{doc.date}</TableCell>
                     <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>{doc.time}</TableCell>
                     <TableCell align="center">
-                      <Button variant="contained" sx={{ borderRadius: 2, backgroundColor: "#1976d2", color: "#FFF" }}>
+                      <Button variant="contained" sx={{ borderRadius: 2, backgroundColor: "#1976d2", color: "#FFF" }} onClick={handleTab}>
                         View Report
                       </Button>
                     </TableCell>

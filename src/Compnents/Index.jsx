@@ -14,10 +14,12 @@ import TableList from './tableList';
 import Transcripts from './Transcripts';
 
 const Index = () => {
-  const [selected, setSelected] = useState('Upload Docs');
+  
+  const [selected, setSelected] = useState("Upload Docs");
 
   const handleSelect = (tab) => {
     setSelected(tab);
+    console.log(selected)
   };
 
   return (
@@ -47,7 +49,7 @@ const Index = () => {
           }}
         >
           <ButtonGroup variant="outlined" sx={{ width: '100%' }}>
-            {['Upload Docs', 'Documents List', 'Transcripts'].map((label) => (
+            {['Upload Docs', 'Documents List', 'Reports'].map((label) => (
               <Button
                 key={label}
                 onClick={() => handleSelect(label)}
@@ -71,8 +73,8 @@ const Index = () => {
 
         <Box sx={{ mt: 3 }}>
           {selected === 'Upload Docs' && <FileUpload />}
-          {selected === 'Documents List' && <TableList />}
-          {selected === 'Transcripts' && <Transcripts />}
+          {selected === 'Documents List' && <TableList  setSelected={setSelected}/>}
+          {selected === 'Reports' && <Transcripts />}
         </Box>
       </Box>
     </div>
