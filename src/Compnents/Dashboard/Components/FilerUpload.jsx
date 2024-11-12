@@ -6,14 +6,18 @@ import {
     Paper,
     LinearProgress,
     IconButton,
-    Grid,
+Grid
 } from '@mui/material';
-import DellIcon from './Assets/deleteIcon2.png'
-import UplaodIcon from './Assets/UploadIcon2.png'
+import UplaodIcon from '../../Assets/UploadIcon2.png'
+import DeleteIcon from '@mui/icons-material/Delete';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 const FileUpload = () => {
     const [files, setFiles] = useState([]);
     const [uploadProgress, setUploadProgress] = useState(0);
-
+    const handleUploadDocs=()=>{
+        toast.success("Documents Uploaded. Thank you!")
+    }
     const onDrop = (acceptedFiles) => {
         const newFiles = acceptedFiles.map(file => ({
             file,
@@ -22,9 +26,9 @@ const FileUpload = () => {
             progress: 0,
         }));
         setFiles(newFiles);
-
         const interval = setInterval(() => {
             setUploadProgress((prev) => {
+
                 if (prev >= 100) {
                     clearInterval(interval);
                     return 100;
@@ -47,7 +51,7 @@ const FileUpload = () => {
         <>
 
             <Grid container rowSpacing={2} columnSpacing={{ xs: 5, sm: 5, md: 20 }} sx={{ mt: 2 ,p:4}}>
-                <Grid item xs={5} >
+                <Grid item xs={12} md={5} >
                     <Typography variant="subtitle2" fontWeight={600} color="#344054">
                         Documents
                     </Typography>
@@ -56,7 +60,7 @@ const FileUpload = () => {
                      EchoWin will automatically read your documents to add new information to your agent's knowledge base.
                     </Typography>
                 </Grid>
-                    <Grid item xs={7}>
+                    <Grid item  xs={12} md={7}>
                         <Box sx={{ width: '100%' }}>
                             <Paper
                                 {...getRootProps()}
@@ -124,15 +128,15 @@ const FileUpload = () => {
                                             </Typography>
                                         </Box>
                                     </Box>
-                                    <IconButton onClick={() => handleDelete(index)} color="error">
-                                    <img src={DellIcon}/>
+                                    <IconButton onClick={() => handleDelete(index)}>
+                                    <DeleteIcon/>
                                     </IconButton>
                                 </Paper>
                             ))}
                         </Box>
                     </Grid>
             </Grid>
-
+<ToastContainer/>
         </>
 
     );

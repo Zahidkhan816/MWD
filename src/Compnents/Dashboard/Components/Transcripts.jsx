@@ -7,7 +7,8 @@ import {
     TextField,
     Button
 } from '@mui/material';
-
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 const Transcripts = () => {
     const reportData = [
         { label: "Blood Pressure", value: "120/80 mmHg" },
@@ -15,10 +16,12 @@ const Transcripts = () => {
         { label: "Blood Sugar", value: "90 mg/dL" },
         { label: "Cholesterol", value: "180 mg/dL" },
         { label: "Body Temperature", value: "98.6 °F" },
-        // { label: "Oxygen Saturation", value: "98%" }
     ];
-
+const handleFeedback=()=>{
+    toast.success("Feedback submitted. Thank you!")
+}
     return (
+       <>
         <Box
             sx={{
                 width: 600,
@@ -82,14 +85,16 @@ const Transcripts = () => {
             />
 
             <Stack direction="row" spacing={2} justifyContent="flex-end">
-                <Button variant="outlined" sx={{ color: "#344054", borderColor: "#D0D5DD" }}>
+                {/* <Button variant="outlined" sx={{ color: "#344054", borderColor: "#D0D5DD" }}>
                     Cancel
-                </Button>
-                <Button variant="contained" sx={{ color: "#FFF", backgroundColor: "#1976d2" }}>
+                </Button> */}
+                <Button variant="contained" sx={{ color: "#FFF", backgroundColor: "#1976d2" }} onClick={handleFeedback}>
                     Submit Feedback
                 </Button>
             </Stack>
         </Box>
+        <ToastContainer />
+        </>
     );
 };
 

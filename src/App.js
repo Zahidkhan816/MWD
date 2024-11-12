@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
-import MainPage from './Compnents/Index'
+import MainPage from './Compnents/Dashboard/Index'
 function App() {
   return (
     <Router>

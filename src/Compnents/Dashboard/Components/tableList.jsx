@@ -11,10 +11,10 @@ import {
   Grid,
   Button
 } from '@mui/material';
-const TableList = ({setSelected}) => {
- const handleTab=()=>{
-  setSelected('Reports')
- }
+const TableList = ({ setSelected }) => {
+  const handleTab = () => {
+    setSelected('Reports')
+  }
   const documentData = [
     {
       name: "Assistance's Knowledge Base",
@@ -101,10 +101,10 @@ const TableList = ({setSelected}) => {
       time: "11:15 AM"
     }
   ];
-  
+
 
   return (
-    <Grid container justifyContent="center" alignItems="center" sx={{ p: 4 }}>
+    <Grid container justifyContent="center" alignItems="center" sx={{ p:1 }}>
       <Grid item xs={10}>
         <Card sx={{ borderRadius: 4, boxShadow: 3 }}>
           <CardContent>
@@ -113,8 +113,9 @@ const TableList = ({setSelected}) => {
               sx={{ color: "#344054", fontWeight: 500, textAlign: "center", marginBottom: 2 }}
             >
               Documents List
-            </Typography>
-            <Table>
+            </Typography >
+            <div style={{ overflowX: "auto"}}>
+            <Table sx={{ minWidth: 700, overflowX: "auto" }} aria-label="custom pagination table">
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ color: "#667085", fontWeight: 600 }}>Name</TableCell>
@@ -142,6 +143,9 @@ const TableList = ({setSelected}) => {
                 ))}
               </TableBody>
             </Table>
+            </div>
+           
+           
           </CardContent>
         </Card>
       </Grid>
