@@ -34,11 +34,10 @@ const Index = () => {
           justifyContent="space-between"
           sx={{ p: 3 }}
         >
-          <Typography variant="h5" fontWeight={600} fontSize={20} classes="Pafe">
+          <Typography variant="h5" fontWeight={600} fontSize={20} >
           POC Docs Converter
           </Typography>
         </Stack>
-
         <Box
           sx={{
             border: '1px solid #D0D5DD',
