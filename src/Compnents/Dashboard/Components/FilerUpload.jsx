@@ -11,7 +11,6 @@ import { storage } from './firebaseConfig'; // Make sure this path is correct
 const FileUpload = () => {
     const [files, setFiles] = useState([]);
     const [uploadProgress, setUploadProgress] = useState({});
-
     // Handle file drop
     const onDrop = (acceptedFiles) => {
         const newFiles = acceptedFiles

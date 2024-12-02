@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { storage, ref, listAll, getDownloadURL } from './firebaseConfig';
+import { storage, ref, listAll, getDownloadURL, db } from './firebaseConfig'; 
 import { getMetadata } from "firebase/storage";
 import {
   Card,
@@ -16,7 +16,7 @@ import {
 
 const TableList = ({ setSelected }) => {
   const [documents, setDocuments] = useState([]);
-  const [loading, setLoading] = useState(true); // Start with loading as true
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -28,12 +28,8 @@ const TableList = ({ setSelected }) => {
           try {
             const metadata = await getMetadata(itemRef);
             const fileUrl = await getDownloadURL(itemRef);
-
-            // Format the timestamp (metadata.timeCreated) into date and time
             const createdDate = new Date(metadata.timeCreated);
-            const formattedDate = createdDate.toLocaleDateString(); // Format the date
-
-            // Format the time portion
+            const formattedDate = createdDate.toLocaleDateString();
             const formattedTime = createdDate.toLocaleTimeString('en-US', {
               hour: '2-digit',
               minute: '2-digit',
@@ -41,32 +37,35 @@ const TableList = ({ setSelected }) => {
             });
 
             return {
-              name: itemRef.name.split('.')[0],
+              name: itemRef.name.split('.')[0], 
               fileName: itemRef.name,
-              fileSize: metadata.size,             // Get file size from metadata
-              date: formattedDate,                 // Formatted date
-              time: formattedTime,                 // Formatted time
+              fileSize: metadata.size,
+              date: formattedDate,
+              time: formattedTime,
               url: fileUrl,
             };
           } catch (error) {
             console.error('Error fetching metadata:', error);
-            return null; // If fetching metadata fails, return null
+            return null;
           }
         }));
 
-        setDocuments(documentData.filter(doc => doc !== null)); // Filter out null results
+        setDocuments(documentData.filter(doc => doc !== null));
       } catch (error) {
         console.error('Error fetching documents:', error);
       } finally {
-        setLoading(false); // Set loading to false after data is fetched or error occurs
+        setLoading(false);
       }
     };
 
     fetchDocuments();
-  }, []); // Run only once when component mounts
+  }, []);
 
-  const handleTab = () => {
-    setSelected('Reports');
+  const fetchReportData = async (docId) => {
+    console.log(docId,"docId")
+   localStorage.setItem('selectedDocument',docId)
+   setSelected('Reports'); 
+
   };
 
   return (
@@ -107,19 +106,19 @@ const TableList = ({ setSelected }) => {
                           {doc.fileName}
                         </TableCell>
                         <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>
-                          {doc.fileSize} bytes {/* Display file size */}
+                          {doc.fileSize} bytes
                         </TableCell>
                         <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>
-                          {new Date(doc.date).toLocaleDateString()} {/* Format date */}
+                          {new Date(doc.date).toLocaleDateString()}
                         </TableCell>
                         <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>
-                          {doc.time} {/* Display formatted time */}
+                          {doc.time}
                         </TableCell>
                         <TableCell align="center">
                           <Button
                             variant="contained"
                             sx={{ borderRadius: 2, backgroundColor: "#1976d2", color: "#FFF" }}
-                            onClick={() => window.open(doc.url, "_blank")}
+                            onClick={() => fetchReportData(doc.name)}  
                           >
                             View Report
                           </Button>
@@ -133,6 +132,7 @@ const TableList = ({ setSelected }) => {
           </CardContent>
         </Card>
       </Grid>
+
     </Grid>
   );
 };
