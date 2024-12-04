@@ -1,3 +1,4 @@
+// Transcripts.js
 import React, { useState, useEffect } from 'react';
 import {
     Stack,
@@ -6,23 +7,27 @@ import {
     Divider,
     TextField,
     Button,
-    CircularProgress
+    CircularProgress,
+    Grid
 } from '@mui/material';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { doc, getDoc } from 'firebase/firestore';  
-import { db } from './firebaseConfig'; 
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from './firebaseConfig';
+import { useParams } from 'react-router-dom'; // Importing useParams
 
-const Transcripts = ({ setSelected }) => {
-    const [selectedFile, setSelectedFile] = useState(null);
+const Transcripts = () => {
+    const { docId } = useParams();
     const [reportData, setReportData] = useState([]);
-    const [feedback, setFeedback] = useState('');
     const [loading, setLoading] = useState(false);
+    const [feedback, setFeedback] = useState('');
     const [feedbackError, setFeedbackError] = useState(false);
+
+    const [editedValues, setEditedValues] = useState({});
 
     const handleFeedback = () => {
         if (!feedback.trim()) {
-            setFeedbackError(true); 
+            setFeedbackError(true);
             return;
         }
         setLoading(true);
@@ -33,21 +38,19 @@ const Transcripts = ({ setSelected }) => {
         }, 2000);
     };
 
+    // Fetch report data from Firestore
     useEffect(() => {
-        const selectedDocument = localStorage.getItem('selectedDocument');
-        const documentName = selectedDocument ? selectedDocument.split('-')[1] : null;
-        
-        setSelectedFile(documentName);
-        console.log(documentName);
-        if (documentName) {
-            handleGetReportData(documentName); 
+        if (docId) {
+            handleGetReportData(docId);
         }
-    }, []);
+    }, [docId]);
 
     const handleGetReportData = async (documentName) => {
         try {
+            const updateDocumentName = documentName ? documentName.split('-')[1] : null;
+
             setLoading(true);
-            const docRef = doc(db, 'biomarker_data', documentName);
+            const docRef = doc(db, 'biomarker_data', updateDocumentName);
             const snapshot = await getDoc(docRef);
 
             if (snapshot.exists()) {
@@ -64,6 +67,67 @@ const Transcripts = ({ setSelected }) => {
             toast.error("Failed to load report data.");
         }
     };
+
+    // Handle change in value or unit
+    const handleEditChange = (index, field, newValue) => {
+        const updatedValues = { ...editedValues };
+        updatedValues[index] = updatedValues[index] || {};
+        updatedValues[index][field] = newValue;
+        setEditedValues(updatedValues);
+    };
+
+    const handleEditReport = async () => {
+        try {
+            console.log('Editing document with docId:', docId);
+
+            setLoading(true);
+
+            const updateDocumentName = docId ? docId.split('-')[1] : null;
+
+            if (!updateDocumentName) {
+                throw new Error("Invalid document ID.");
+            }
+
+            const updatedReportData = reportData.map((dataItem, index) => {
+                if (editedValues[index]) {
+                    return {
+                        ...dataItem,
+                        value: {
+                            data: {
+                                ...dataItem.value.data,
+                                value: editedValues[index].value || dataItem.value.data.value,
+                                unit: editedValues[index].unit || dataItem.value.data.unit
+                            }
+                        }
+                    };
+                }
+                return dataItem;
+            });
+
+            // Log the updatedReportData to ensure it's correct
+            console.log('Updated report data:', updatedReportData);
+
+            const docRef = doc(db, 'biomarker_data', updateDocumentName);  // Reference to the correct document
+
+            // Check if the document exists before trying to update
+            const docSnapshot = await getDoc(docRef);
+            if (!docSnapshot.exists()) {
+                throw new Error("Document does not exist.");
+            }
+
+            await updateDoc(docRef, {
+                biomarkers: updatedReportData,  // Update biomarkers
+            });
+
+            toast.success("Report updated successfully!");
+            setLoading(false);
+        } catch (error) {
+            console.error("Error updating document:", error);
+            toast.error(error.message || "Failed to update report.");
+            setLoading(false);
+        }
+    };
+
 
     return (
         <>
@@ -105,12 +169,33 @@ const Transcripts = ({ setSelected }) => {
                                         borderRadius: 2,
                                     }}
                                 >
-                                    <Typography sx={{ fontWeight: 500, color: "#515B6F" }}>
-                                        {dataItem.displayName}:
-                                    </Typography>
-                                    <Typography sx={{ fontWeight: 600, color: "#344054" }}>
-                                        {dataItem.value.data.value} {dataItem.value.data.unit}
-                                    </Typography>
+                                    <Grid container spacing={2}>
+                                    <Grid item xs={12} key={index}>
+                                            <Typography sx={{ fontWeight: 500, color: "#515B6F" }}>
+                                                {dataItem.displayName}:
+                                            </Typography>
+                                        </Grid>
+                                    </Grid>
+                                    <Grid item xs={12} key={index}>
+                                        <TextField
+                                            sx={{ width: 150, mr: 2 }}
+                                            value={editedValues[index]?.value || dataItem.value.data.value}
+                                            onChange={(e) => handleEditChange(index, 'value', e.target.value)}
+                                            size="small"
+                                            variant="outlined"
+                                            label="Value"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} key={index}>
+                                        <TextField
+                                            sx={{ width: 100 }}
+                                            value={editedValues[index]?.unit || dataItem.value.data.unit}
+                                            onChange={(e) => handleEditChange(index, 'unit', e.target.value)}
+                                            size="small"
+                                            variant="outlined"
+                                            label="Unit"
+                                        />
+                                    </Grid>
                                 </Box>
                             ))}
                         </Box>
@@ -129,40 +214,14 @@ const Transcripts = ({ setSelected }) => {
 
                 <Divider sx={{ my: 2 }} />
 
-                <Typography variant="body2" sx={{ color: '#667085', mb: 1 }}>
-                    Make a Feedback
-                </Typography>
-                <TextField
-                    fullWidth
-                    variant="outlined"
-                    placeholder="Provide feedback on the report"
-                    multiline
-                    rows={2}
-                    value={feedback}
-                    onChange={(e) => {
-                        setFeedback(e.target.value);
-                        setFeedbackError(false);
-                    }}
-                    error={feedbackError}
-                    helperText={feedbackError && "Feedback cannot be empty."}
-                    sx={{
-                        borderRadius: '8px',
-                        backgroundColor: '#F7F7F7',
-                        border: '1px solid #D0D5DD',
-                        color: '#515B6F',
-                        mb: 2
-                    }}
-                />
-
                 <Stack direction="row" spacing={2} justifyContent="flex-end">
-                    <Button
-                        variant="contained"
-                        sx={{ color: "#FFF", backgroundColor: "#1976d2" }}
-                        onClick={handleFeedback}
-                        disabled={loading}
-                    >
-                        {loading ? "Submitting..." : "Submit Feedback"}
-                    </Button>
+                <Button
+                    variant="contained"
+                    sx={{ color: "#FFF", backgroundColor: "#1976d2" }}
+                    onClick={handleEditReport} 
+                >
+                    Save Changes
+                </Button>
                 </Stack>
             </Box>
             <ToastContainer />

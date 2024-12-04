@@ -1,0 +1,67 @@
+$borderRadius: 10px;
+$spacer: 1rem;
+$primary: #126ff3;
+$text: #fff;
+$linkHeight: $spacer * 3.5;
+$timing: 250ms;
+$transition: $timing ease all;
+$linkWidth: 10rem;
+
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@600&display=swap');
+
+.header {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.9);
+  color: $text;
+  padding: 0 $spacer * 2;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.03);
+  height: 6rem;
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+}
+
+.navbar {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  overflow: hidden;
+  top: 0;
+.header__logo{
+    font-size: 1rem;
+}
+  &__menu {
+    position: relative;
+    display: flex;
+    gap: $spacer; /* Adds space between links */
+  }
+
+  &__link {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    align-items: center;
+    justify-content: center;
+    height: $linkHeight;
+    width: $linkWidth;
+    color: $text;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: $transition;
+list-style: none;    
+    svg {
+      transition: $transition;
+    }
+    
+    &:hover {
+      color: $primary;
+      svg {
+        transform: scale(1.1);
+      }
+    }
+  }
+}

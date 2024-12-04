@@ -11,12 +11,15 @@ import {
   TableHead,
   TableRow,
   Grid,
-  Button, CircularProgress
+  Button,
+  CircularProgress
 } from '@mui/material';
+import { useNavigate } from 'react-router-dom';
 
 const TableList = ({ setSelected }) => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchDocuments = async () => {
@@ -39,7 +42,7 @@ const TableList = ({ setSelected }) => {
             return {
               name: itemRef.name.split('.')[0], 
               fileName: itemRef.name,
-              fileSize: metadata.size,
+              fileSize: formatFileSize(metadata.size),
               date: formattedDate,
               time: formattedTime,
               url: fileUrl,
@@ -61,11 +64,20 @@ const TableList = ({ setSelected }) => {
     fetchDocuments();
   }, []);
 
-  const fetchReportData = async (docId) => {
-    console.log(docId,"docId")
-   localStorage.setItem('selectedDocument',docId)
-   setSelected('Reports'); 
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return `${bytes} B`;
+    const units = ['KB', 'MB', 'GB'];
+    let i = 0;
+    let size = bytes / 1024;
+    while (size > 1024 && i < units.length - 1) {
+      size /= 1024;
+      i++;
+    }
+    return `${size.toFixed(2)} ${units[i]}`;
+  };
 
+  const fetchReportData = (docId) => {
+    navigate(`/report/${docId}`);
   };
 
   return (
@@ -98,7 +110,7 @@ const TableList = ({ setSelected }) => {
                         <CircularProgress />
                       </TableCell>
                     </TableRow>
-                  ) : (
+                  ) : documents.length > 0 ? (
                     documents.map((doc, index) => (
                       <TableRow key={index} hover>
                         <TableCell sx={{ fontWeight: 500 }}>{doc.name}</TableCell>
@@ -106,10 +118,10 @@ const TableList = ({ setSelected }) => {
                           {doc.fileName}
                         </TableCell>
                         <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>
-                          {doc.fileSize} bytes
+                          {doc.fileSize}
                         </TableCell>
                         <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>
-                          {new Date(doc.date).toLocaleDateString()}
+                          {doc.date}
                         </TableCell>
                         <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>
                           {doc.time}
@@ -125,6 +137,12 @@ const TableList = ({ setSelected }) => {
                         </TableCell>
                       </TableRow>
                     ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center">
+                        No documents available.
+                      </TableCell>
+                    </TableRow>
                   )}
                 </TableBody>
               </Table>
@@ -132,7 +150,6 @@ const TableList = ({ setSelected }) => {
           </CardContent>
         </Card>
       </Grid>
-
     </Grid>
   );
 };
