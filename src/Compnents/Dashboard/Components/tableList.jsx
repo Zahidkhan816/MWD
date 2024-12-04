@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 
-const TableList = ({ setSelected }) => {
+const TableList = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
