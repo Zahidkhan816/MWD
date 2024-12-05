@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { storage, ref, listAll, getDownloadURL, db } from './firebaseConfig'; 
+import { storage, ref, listAll, getDownloadURL, db } from './firebaseConfig';
 import { getMetadata } from "firebase/storage";
 import {
   Card,
@@ -22,12 +22,18 @@ const TableList = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        const storageRef = ref(storage, 'uploads/');
-        const res = await listAll(storageRef);
+  
+  
+    fetchDocuments();
+  }, []);
+  
+  const fetchDocuments = async () => {
+    try {
+      const storageRef = ref(storage, 'uploads/');
+      const res = await listAll(storageRef);
 
-        const documentData = await Promise.all(res.items.map(async (itemRef) => {
+      const documentData = await Promise.all(
+        res.items.map(async (itemRef) => {
           try {
             const metadata = await getMetadata(itemRef);
             const fileUrl = await getDownloadURL(itemRef);
@@ -40,30 +46,33 @@ const TableList = () => {
             });
 
             return {
-              name: itemRef.name.split('.')[0], 
+              name: itemRef.name.split('.')[0],
               fileName: itemRef.name,
               fileSize: formatFileSize(metadata.size),
               date: formattedDate,
               time: formattedTime,
+              timestamp: createdDate.getTime(), // Use timestamp for sorting
               url: fileUrl,
             };
           } catch (error) {
             console.error('Error fetching metadata:', error);
             return null;
           }
-        }));
+        })
+      );
 
-        setDocuments(documentData.filter(doc => doc !== null));
-      } catch (error) {
-        console.error('Error fetching documents:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+      // Sort documents by timestamp in descending order
+      const sortedDocuments = documentData
+        .filter((doc) => doc !== null)
+        .sort((a, b) => b.timestamp - a.timestamp);
 
-    fetchDocuments();
-  }, []);
-
+      setDocuments(sortedDocuments);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   const formatFileSize = (bytes) => {
     if (bytes < 1024) return `${bytes} B`;
     const units = ['KB', 'MB', 'GB'];
@@ -75,7 +84,7 @@ const TableList = () => {
     }
     return `${size.toFixed(2)} ${units[i]}`;
   };
-// handleFetchReports
+  // handleFetchReports
   const fetchReportData = (docId) => {
     navigate(`/report/${docId}`);
   };
@@ -127,14 +136,27 @@ const TableList = () => {
                           {doc.time}
                         </TableCell>
                         <TableCell align="center">
-                          <Button
-                            variant="contained"
-                            sx={{ borderRadius: 2, backgroundColor: "#1976d2", color: "#FFF" }}
-                            onClick={() => fetchReportData(doc.name)}  
+                          <button
+                            style={{
+                              borderRadius: "8px",
+                              backgroundColor: "#1976d2",
+                              color: "#FFF",
+                              padding: "8px 16px",
+                              fontWeight: "bold",
+                              fontSize: "14px",
+                              border: "none",
+                              cursor: "pointer",
+                              boxShadow: "0px 2px 4px rgba(0, 0, 0, 0.2)",
+                              transition: "background-color 0.3s ease, transform 0.2s ease",
+                            }}
+                            onMouseOver={(e) => (e.target.style.backgroundColor = "#115293")}
+                            onMouseOut={(e) => (e.target.style.backgroundColor = "#1976d2")}
+                            onClick={() => fetchReportData(doc.name)}
                           >
                             View Report
-                          </Button>
+                          </button>
                         </TableCell>
+
                       </TableRow>
                     ))
                   ) : (

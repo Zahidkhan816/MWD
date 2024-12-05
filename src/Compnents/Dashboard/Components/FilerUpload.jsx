@@ -50,11 +50,11 @@ const FileUpload = () => {
         if (file.type.startsWith('image')) {
             const img = new Image();
             img.src = URL.createObjectURL(file);
-            img.onload = () => {
-                if (img.width > maxWidth || img.height > maxHeight) {
-                    toast.error('Image dimensions exceed the 800x400px limit.');
-                }
-            };
+            // img.onload = () => {
+            //     if (img.width > maxWidth || img.height > maxHeight) {
+            //         toast.error('Image dimensions exceed the 800x400px limit.');
+            //     }
+            // };
         }
 
         return true;
@@ -135,7 +135,7 @@ const FileUpload = () => {
                                         <span style={{ color: '#40C4FF', fontWeight: '500' }}>Click to upload</span> or drag and drop
                                     </Typography>
                                     <Typography variant="caption" color="textSecondary">
-                                        SVG, PDF, JPG, or GIF (max. 800×400px)
+                                        SVG, PDF, JPG or GIF (max. 800×400px)
                                     </Typography>
                                 </Box>
                             )}
