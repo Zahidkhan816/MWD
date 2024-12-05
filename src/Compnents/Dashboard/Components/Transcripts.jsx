@@ -14,7 +14,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import { useParams } from 'react-router-dom'; // Importing useParams
+import { useParams } from 'react-router-dom'; 
 
 const Transcripts = () => {
     const { docId } = useParams();
@@ -68,7 +68,6 @@ const Transcripts = () => {
         }
     };
 
-    // Handle change in value or unit
     const handleEditChange = (index, field, newValue) => {
         const updatedValues = { ...editedValues };
         updatedValues[index] = updatedValues[index] || {};
@@ -104,19 +103,16 @@ const Transcripts = () => {
                 return dataItem;
             });
 
-            // Log the updatedReportData to ensure it's correct
             console.log('Updated report data:', updatedReportData);
 
-            const docRef = doc(db, 'biomarker_data', updateDocumentName);  // Reference to the correct document
-
-            // Check if the document exists before trying to update
+            const docRef = doc(db, 'biomarker_data', updateDocumentName);  
             const docSnapshot = await getDoc(docRef);
             if (!docSnapshot.exists()) {
                 throw new Error("Document does not exist.");
             }
 
             await updateDoc(docRef, {
-                biomarkers: updatedReportData,  // Update biomarkers
+                biomarkers: updatedReportData, 
             });
 
             toast.success("Report updated successfully!");

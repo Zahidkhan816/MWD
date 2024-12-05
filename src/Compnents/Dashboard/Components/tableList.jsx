@@ -51,7 +51,7 @@ const TableList = () => {
               fileSize: formatFileSize(metadata.size),
               date: formattedDate,
               time: formattedTime,
-              timestamp: createdDate.getTime(), // Use timestamp for sorting
+              timestamp: createdDate.getTime(), 
               url: fileUrl,
             };
           } catch (error) {
@@ -61,7 +61,6 @@ const TableList = () => {
         })
       );
 
-      // Sort documents by timestamp in descending order
       const sortedDocuments = documentData
         .filter((doc) => doc !== null)
         .sort((a, b) => b.timestamp - a.timestamp);
@@ -84,7 +83,6 @@ const TableList = () => {
     }
     return `${size.toFixed(2)} ${units[i]}`;
   };
-  // handleFetchReports
   const fetchReportData = (docId) => {
     navigate(`/report/${docId}`);
   };

@@ -2,16 +2,15 @@ import React, { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Box, Typography, Paper, LinearProgress, IconButton, Grid } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import UploadIcon from '../../Assets/UploadIcon2.png';  // Assuming you have an upload icon
+import UploadIcon from '../../Assets/UploadIcon2.png';  
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from './firebaseConfig'; // Make sure this path is correct
+import { storage } from './firebaseConfig'; 
 
 const FileUpload = () => {
     const [files, setFiles] = useState([]);
     const [uploadProgress, setUploadProgress] = useState({});
-    // Handle file drop
     const onDrop = (acceptedFiles) => {
         const newFiles = acceptedFiles
             .filter((file) => validateFile(file))
@@ -21,19 +20,18 @@ const FileUpload = () => {
                 size: (file.size / 1024).toFixed(2) + ' KB',
             }));
 
-        if (newFiles.length === 0) return; // No valid files to upload
+        if (newFiles.length === 0) return; 
 
-        setFiles(newFiles);  // Add new files to state
+        setFiles(newFiles);  
 
         newFiles.forEach((fileObj) => {
-            uploadToFirebase(fileObj.file);  // Upload each file
+            uploadToFirebase(fileObj.file); 
         });
     };
 
-    // Validate file type and size
     const validateFile = (file) => {
         const allowedTypes = ['image/svg+xml', 'application/pdf', 'image/jpeg', 'image/gif'];
-        const maxSize = 5 * 1024 * 1024; // 5 MB
+        const maxSize = 5 * 1024 * 1024; 
         const maxWidth = 800;
         const maxHeight = 400;
 
@@ -60,11 +58,10 @@ const FileUpload = () => {
         return true;
     };
 
-    // Upload file to Firebase Storage
     const uploadToFirebase = (file) => {
-        const fileName = `${Date.now()}-${file.name}`; // Prevent file name collisions
-        const storageRef = ref(storage, `uploads/${fileName}`);  // Firebase storage reference
-        const uploadTask = uploadBytesResumable(storageRef, file);  // Begin upload
+        const fileName = `${Date.now()}-${file.name}`; 
+        const storageRef = ref(storage, `uploads/${fileName}`);  
+        const uploadTask = uploadBytesResumable(storageRef, file); 
 
         uploadTask.on(
             'state_changed',
@@ -77,21 +74,20 @@ const FileUpload = () => {
                 toast.error('Failed to upload file!');
             },
             async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);  // Get file URL
+                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref); 
                 toast.success('File uploaded successfully!');
-                console.log('File available at:', downloadURL);  // You can store this URL in a database or state
+                console.log('File available at:', downloadURL);  
             }
         );
     };
 
-    // Handle file deletion from list
     const handleDelete = (index) => {
         const newFiles = [...files];
         newFiles.splice(index, 1);
         setFiles(newFiles);
         setUploadProgress((prev) => {
             const updatedProgress = { ...prev };
-            delete updatedProgress[files[index].name];  // Remove progress for the deleted file
+            delete updatedProgress[files[index].name];  
             return updatedProgress;
         });
     };
