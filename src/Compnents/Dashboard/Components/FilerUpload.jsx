@@ -76,7 +76,6 @@ const FileUpload = () => {
             async () => {
                 const downloadURL = await getDownloadURL(uploadTask.snapshot.ref); 
                 toast.success('File uploaded successfully!');
-                console.log('File available at:', downloadURL);  
             }
         );
     };
