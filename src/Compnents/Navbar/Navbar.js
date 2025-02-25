@@ -14,7 +14,7 @@ const Navbar = () => {
         <div className="header">
             <div className="header__logo">
                 <h4 onClick={handleNavigate} className="header__logo" style={{cursor:"pointer"}}>
-                        Documents Reader (POC)
+                        Documents Reader (MWD)
                 </h4>
             </div>
             <nav className="navbar">
