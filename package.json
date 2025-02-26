@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@aws-sdk/client-lambda": "^3.750.0",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.1.6",
@@ -12,6 +13,7 @@
     "@testing-library/user-event": "^13.5.0",
     "dropzone": "^6.0.0-beta.2",
     "firebase": "^11.0.2",
+    "papaparse": "^5.5.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-dropzone": "^14.3.5",
