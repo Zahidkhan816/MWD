@@ -1,97 +1,152 @@
-import React, { useState } from 'react';
-import { useDropzone } from 'react-dropzone';
-import { Box, Typography, Paper, LinearProgress, IconButton, Grid } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import UploadIcon from '../../Assets/UploadIcon2.png';  
-import { ToastContainer, toast } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from './firebaseConfig'; 
+import React, { useState, useCallback } from "react";
+import { useDropzone } from "react-dropzone";
+import {
+    Box, Typography, Paper, LinearProgress, IconButton, Grid, Button,
+    Table, TableBody, TableCell, TableHead, TableRow, CircularProgress, TableContainer
+} from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import UploadIcon from "../../Assets/UploadIcon2.png";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import Papa from "papaparse";
+import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 
 const FileUpload = () => {
     const [files, setFiles] = useState([]);
+    const [csvData, setCsvData] = useState(null);
     const [uploadProgress, setUploadProgress] = useState({});
-    const onDrop = (acceptedFiles) => {
-        const newFiles = acceptedFiles
-            .filter((file) => validateFile(file))
-            .map((file) => ({
-                file,
-                name: file.name,
-                size: (file.size / 1024).toFixed(2) + ' KB',
-            }));
+    const [response, setResponse] = useState(null);
+    const [loading, setLoading] = useState(false);
 
-        if (newFiles.length === 0) return; 
-
-        setFiles(newFiles);  
-
-        newFiles.forEach((fileObj) => {
-            uploadToFirebase(fileObj.file); 
-        });
-    };
-
-    const validateFile = (file) => {
-        const allowedTypes = ['image/svg+xml', 'application/pdf', 'image/jpeg', 'image/gif'];
-        const maxSize = 5 * 1024 * 1024; 
-        const maxWidth = 800;
-        const maxHeight = 400;
-
-        if (!allowedTypes.includes(file.type)) {
-            toast.error('Invalid file type. Only SVG, PDF, JPG, and GIF are allowed.');
-            return false;
+    const onDrop = useCallback((acceptedFiles) => {
+        const csvFiles = acceptedFiles.filter(file => file.name.endsWith(".csv"));
+    
+        if (csvFiles.length === 0) {
+            toast.error("Only CSV files are accepted.");
+            return;
         }
+    
+        setFiles(csvFiles);
+        csvFiles.forEach(file => handleFileUpload(file));
+    }, []);
+    
 
-        if (file.size > maxSize) {
-            toast.error('File size exceeds the 5MB limit.');
-            return false;
+    const { getRootProps, getInputProps, isDragActive } = useDropzone({
+        accept: ".csv",
+        onDrop,
+    });
+
+    const handleFileUpload = (file) => {
+        if (!file || !file.name.endsWith(".csv")) {
+            toast.error("Only CSV files are accepted.");
+            return;
         }
-
-        if (file.type.startsWith('image')) {
-            const img = new Image();
-            img.src = URL.createObjectURL(file);
-            // img.onload = () => {
-            //     if (img.width > maxWidth || img.height > maxHeight) {
-            //         toast.error('Image dimensions exceed the 800x400px limit.');
-            //     }
-            // };
-        }
-
-        return true;
-    };
-
-    const uploadToFirebase = (file) => {
-        const fileName = `${Date.now()}-${file.name}`; 
-        const storageRef = ref(storage, `uploads/${fileName}`);  
-        const uploadTask = uploadBytesResumable(storageRef, file); 
-
-        uploadTask.on(
-            'state_changed',
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                setUploadProgress((prev) => ({ ...prev, [file.name]: progress.toFixed(0) }));
-            },
-            (error) => {
-                console.error('Error uploading file:', error);
-                toast.error('Failed to upload file!');
-            },
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref); 
-                toast.success('File uploaded successfully!');
+    
+        setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }));
+    
+        const reader = new FileReader();
+        reader.onprogress = (event) => {
+            if (event.lengthComputable) {
+                const percent = Math.round((event.loaded / event.total) * 100);
+                setUploadProgress((prev) => ({ ...prev, [file.name]: percent }));
             }
-        );
+        };
+    
+        reader.onloadend = () => {
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: (result) => {
+                    setCsvData(result.data);
+                    toast.success("CSV file parsed successfully!");
+                },
+                error: () => {
+                    toast.error("Error parsing CSV file.");
+                },
+            });
+        };
+    
+        reader.readAsText(file);
     };
+    
+
+    const invokeLambda = async () => {
+        if (!csvData) {
+            toast.warn("Please upload a CSV file first.");
+            return;
+        }
+    
+        setLoading(true);
+    
+        try {
+            const credentials = {
+                accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID_F,
+                secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY_F,
+            };
+    
+            if (!credentials.accessKeyId || !credentials.secretAccessKey) {
+                throw new Error("AWS credentials are missing. Check your environment variables.");
+            }
+    
+            const lambdaClient = new LambdaClient({
+                region: process.env.REACT_APP_REGION_NAME, 
+                credentials,
+            });
+    
+            const payload = { data: csvData };
+    
+            const command = new InvokeCommand({
+                FunctionName: process.env.REACT_APP_FUNCTION_NAME,
+                InvocationType: "RequestResponse",
+                Payload: JSON.stringify(payload),
+            });
+    
+            const response = await lambdaClient.send(command);
+    
+            if (!response.Payload) {
+                throw new Error("No payload received from Lambda.");
+            }
+    
+            const decodedPayload = new TextDecoder().decode(response.Payload);
+    
+            let parsedResponse;
+            try {
+                parsedResponse = JSON.parse(decodedPayload);
+            } catch (parseError) {
+                console.error("Failed to parse Lambda response:", parseError);
+                throw new Error("Invalid response format from Lambda function.");
+            }
+    
+            let responseBody;
+            try {
+                responseBody = JSON.parse(parsedResponse.body);
+            } catch (bodyParseError) {
+                console.error("Failed to parse Lambda response body:", bodyParseError);
+                throw new Error("Invalid body in Lambda response.");
+            }
+    
+            setResponse(responseBody);
+            console.log("Lambda Response Body:", responseBody);
+            toast.success("Duplicates checked successfully!");
+        } catch (error) {
+            console.error("Lambda Invocation Error:", error);
+            toast.error(error.message || "Failed to process request. Check logs.");
+            setResponse({ error: error.message });
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+
 
     const handleDelete = (index) => {
-        const newFiles = [...files];
-        newFiles.splice(index, 1);
+        const newFiles = files.filter((_, i) => i !== index);
         setFiles(newFiles);
-        setUploadProgress((prev) => {
-            const updatedProgress = { ...prev };
-            delete updatedProgress[files[index].name];  
-            return updatedProgress;
-        });
-    };
+        if (newFiles.length === 0) setCsvData();
+        setFiles()
+        setResponse();
 
-    const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop });
+    };
 
     return (
         <>
@@ -100,24 +155,20 @@ const FileUpload = () => {
                     <Typography variant="subtitle2" fontWeight={600} color="#344054">
                         Documents
                     </Typography>
-                    <Typography variant="body2" color="#667085" sx={{ lineHeight: '24px' }}>
-                        Upload documents relevant to your business. EchoWin will automatically read them to add new information to your agent's knowledge base.
+                    <Typography variant="body2" color="#667085">
+                        Upload documents relevant to your business. EchoWin will automatically process them.
                     </Typography>
-                </Grid>
-                <Grid item xs={12} md={7}>
-                    <Box sx={{ width: '100%' }}>
+                    <Box sx={{ width: "100%", padding: "20px" }}>
                         <Paper
                             {...getRootProps()}
                             sx={{
-                                textAlign: 'center',
-                                border: '2px solid #E0E0E0',
-                                borderRadius: '12px',
-                                cursor: 'pointer',
+                                textAlign: "center",
+                                border: "2px solid #E0E0E0",
+                                borderRadius: "12px",
+                                cursor: "pointer",
                                 p: 4,
                                 mb: 3,
-                                transition: 'border-color 0.3s',
-                                '&:hover': { borderColor: '#40C4FF' },
-                                boxShadow: 3,
+                                "&:hover": { borderColor: "#40C4FF" },
                             }}
                         >
                             <input {...getInputProps()} />
@@ -127,52 +178,23 @@ const FileUpload = () => {
                                 <Box>
                                     <img src={UploadIcon} alt="Upload Icon" />
                                     <Typography variant="body1" color="textSecondary">
-                                        <span style={{ color: '#40C4FF', fontWeight: '500' }}>Click to upload</span> or drag and drop
+                                        <span style={{ color: "#40C4FF", fontWeight: "500" }}>Click to upload</span> or drag and drop
                                     </Typography>
                                     <Typography variant="caption" color="textSecondary">
-                                        SVG, PDF, JPG or GIF (max. 800×400px)
+                                        CSV files only
                                     </Typography>
+                                    {files?.length > 0 && uploadProgress[files[0].name] !== undefined && (
+                                        <LinearProgress variant="determinate" value={uploadProgress[files[0].name]} sx={{ mt: 1 }} />
+                                    )}
+
                                 </Box>
                             )}
                         </Paper>
-
-                        {files.map((file, index) => (
-                            <Paper
-                                key={index}
-                                sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    mt: 2,
-                                    p: 2,
-                                    border: '1px solid #E0E0E0',
-                                    borderRadius: '8px',
-                                    boxShadow: 1,
-                                }}
-                            >
+                        {files?.map((file, index) => (
+                            <Paper key={index} sx={{ display: "flex", alignItems: "center", mt: 2, p: 2 }}>
                                 <Box sx={{ flexGrow: 1 }}>
-                                    <Typography variant="body2" sx={{ fontWeight: '500' }}>
-                                        {file.name}
-                                    </Typography>
-                                    <Typography variant="caption" color="textSecondary">
-                                        {file.size}
-                                    </Typography>
-                                    <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', mt: 1 }}>
-                                        <LinearProgress
-                                            variant="determinate"
-                                            value={uploadProgress[file.name] || 0}
-                                            sx={{
-                                                flexGrow: 1,
-                                                height: 6,
-                                                borderRadius: 5,
-                                                '& .MuiLinearProgress-bar': {
-                                                    backgroundColor: '#40C4FF',
-                                                },
-                                            }}
-                                        />
-                                        <Typography variant="body2" sx={{ ml: '8px', color: '#40C4FF' }}>
-                                            {uploadProgress[file.name] || 0}%
-                                        </Typography>
-                                    </Box>
+                                    <Typography variant="body2" fontWeight={500}>{file.name}</Typography>
+                                    <Typography variant="caption" color="textSecondary">{file.size} bytes</Typography>
                                 </Box>
                                 <IconButton onClick={() => handleDelete(index)}>
                                     <DeleteIcon />
@@ -181,6 +203,77 @@ const FileUpload = () => {
                         ))}
                     </Box>
                 </Grid>
+                <Grid item xs={12} md={7}>
+
+
+                    {csvData && (
+                        <Box mt={3}>
+                            <Typography variant="h6">CSV Data:</Typography>
+                            <Paper sx={{ p: 2, maxHeight: 200, overflow: "auto", backgroundColor: "#f9f9f9" }}>
+                                <pre>{JSON.stringify(csvData, null, 2)}</pre>
+                            </Paper>
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                onClick={invokeLambda}
+                                disabled={!csvData || loading}
+                                sx={{ mt: 2 }}
+                            >
+                                {loading ? <CircularProgress size={24} color="inherit" /> : "Upload"}
+                            </Button>
+                        </Box>
+                    )}
+
+
+                    <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Name</TableCell>
+                                    <TableCell align="center">Message</TableCell>
+                                    <TableCell align="center">Duplicate Size</TableCell>
+                                    <TableCell align="center">Duplicate File URL</TableCell>
+                                    <TableCell align="center">Clean File URL</TableCell>
+                                </TableRow>
+                            </TableHead>
+
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={5} align="center">
+                                            <CircularProgress />
+                                        </TableCell>
+                                    </TableRow>
+                                ) : response ? (
+                                    <TableRow hover>
+                                        <TableCell>{"File"}</TableCell>
+                                        <TableCell align="center">{response?.message || "N/A"}</TableCell>
+                                        <TableCell align="center">{response?.duplicate_count || "N/A"}</TableCell>
+                                        <TableCell align="center">
+                                            {response.duplicate_file_url ? (
+                                                <a href={response.duplicate_file_url} target="_blank" rel="noopener noreferrer" style={{ color: "green", textDecoration: "underline" }}>
+                                                    Download
+                                                </a>
+                                            ) : "N/A"}
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            {response.clean_file_url ? (
+                                                <a href={response.clean_file_url} target="_blank" rel="noopener noreferrer" style={{ color: "green", textDecoration: "underline" }}>
+                                                    Download
+                                                </a>
+                                            ) : "N/A"}
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    <TableRow>
+                                        <TableCell colSpan={5} align="center">No data available</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+
+                </Grid>
             </Grid>
             <ToastContainer />
         </>
@@ -188,3 +281,4 @@ const FileUpload = () => {
 };
 
 export default FileUpload;
+// uploade
