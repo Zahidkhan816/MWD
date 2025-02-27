@@ -16,17 +16,20 @@ const FileUpload = () => {
     const [csvData, setCsvData] = useState(null);
     const [uploadProgress, setUploadProgress] = useState({});
     const [response, setResponse] = useState(null);
+    const [filename, setFileName] = useState()
     const [loading, setLoading] = useState(false);
 
     const onDrop = useCallback((acceptedFiles) => {
         const csvFiles = acceptedFiles.filter(file => file.name.endsWith(".csv"));
-    
+        const fileNameWithoutExtension = csvFiles[0]?.name.split('.').slice(0, -1).join('.') || csvFiles[0]?.name;
+
         if (csvFiles.length === 0) {
             toast.error("Only CSV files are accepted.");
             return;
         }
-    
+
         setFiles(csvFiles);
+        setFileName(fileNameWithoutExtension)
         csvFiles.forEach(file => handleFileUpload(file));
     }, []);
 
@@ -41,8 +44,9 @@ const FileUpload = () => {
             return;
         }
     
+
         setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }));
-    
+
         const reader = new FileReader();
         reader.onprogress = (event) => {
             if (event.lengthComputable) {
@@ -50,7 +54,7 @@ const FileUpload = () => {
                 setUploadProgress((prev) => ({ ...prev, [file.name]: percent }));
             }
         };
-    
+
         reader.onloadend = () => {
             try {
                 Papa.parse(file, {
@@ -58,6 +62,7 @@ const FileUpload = () => {
                     skipEmptyLines: true,
                     complete: (result) => {
                         setCsvData(result.data);
+                        
                         toast.success("CSV file parsed successfully!");
                     },
                     error: (err) => {
@@ -68,7 +73,7 @@ const FileUpload = () => {
                 toast.error("File reading error: " + error.message);
             }
         };
-    
+
         reader.readAsText(file);
     };
 
@@ -79,43 +84,43 @@ const FileUpload = () => {
     }, [csvData]);
 
     const invokeLambda = async () => {
+        console.log(filename,"filename ")
         if (!csvData) return;
 
         setLoading(true);
-    
+
         try {
             const credentials = {
                 accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID_F,
                 secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY_F,
             };
-    
+
             if (!credentials.accessKeyId || !credentials.secretAccessKey) {
                 throw new Error("AWS credentials are missing. Check your environment variables.");
             }
-    
+
             const lambdaClient = new LambdaClient({
-                region: process.env.REACT_APP_REGION_NAME, 
+                region: process.env.REACT_APP_REGION_NAME,
                 credentials,
             });
-    
-            const payload = { data: csvData ,filename:"doctors"}
-    
+
+            const payload = { data: csvData, filename:filename }
+
             const command = new InvokeCommand({
                 FunctionName: process.env.REACT_APP_FUNCTION_NAME,
                 InvocationType: "RequestResponse",
                 Payload: JSON.stringify(payload),
             });
-    
+
             const response = await lambdaClient.send(command);
-    
+
             if (!response.Payload) {
                 throw new Error("No payload received from Lambda.");
             }
-    
+
             const decodedPayload = new TextDecoder().decode(response.Payload);
             const parsedResponse = JSON.parse(decodedPayload);
             const responseBody = JSON.parse(parsedResponse.body);
-    
             setResponse(responseBody);
             console.log("Lambda Response Body:", responseBody);
             toast.success("Duplicates checked successfully!");
