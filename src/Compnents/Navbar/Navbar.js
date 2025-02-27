@@ -1,34 +1,98 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import './Navbar.scss';
-import { useNavigate } from 'react-router-dom';
-
-const Navbar = () => {
+import * as React from 'react';
+import AppBar from '@mui/material/AppBar';
+import Box from '@mui/material/Box';
+import Toolbar from '@mui/material/Toolbar';
+import IconButton from '@mui/material/IconButton';
+import Menu from '@mui/material/Menu';
+import MenuIcon from '@mui/icons-material/Menu';
+import Container from '@mui/material/Container';
+import MenuItem from '@mui/material/MenuItem';
+import { useState } from 'react';
+import Logo from '../Assets/logo.jpg';
+import { Link, useNavigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
+function Navbar() {
     const navigate = useNavigate();
+    const [anchorElNav, setAnchorElNav] = useState(null);
 
-    const handleNavigate = () => {
-        navigate('/')
-    }
+    const handleOpenNavMenu = (event) => {
+        setAnchorElNav(event.currentTarget);
+    };
+
+    const handleCloseNavMenu = () => {
+        setAnchorElNav(null);
+    };
 
     return (
-        <div className="header">
-            <div className="header__logo">
-                <h4 onClick={handleNavigate} className="header__logo" style={{cursor:"pointer"}}>
-                        Documents Reader (MWD)
-                </h4>
-            </div>
-            <nav className="navbar">
-                <div className="navbar__menu">
-                    <Link to="/" className="navbar__link">
-                        Upload File
-                    </Link>
-                    <Link to="/table-list" className="navbar__link">
-                        Documents
-                    </Link>
-                </div>
-            </nav>
-        </div>
+        <AppBar position="static">
+            <Container maxWidth="xl">
+                <Toolbar disableGutters>
+                    <Box sx={{ mr: 3, cursor: 'pointer' }} onClick={() => navigate('/')}>
+                        <img src={Logo} alt="Logo" style={{ maxWidth: '150px', height: 'auto' }} />
+                    </Box>
+                    <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
+                        <IconButton
+                            size="large"
+                            aria-label="menu"
+                            aria-controls="menu-appbar"
+                            aria-haspopup="true"
+                            onClick={handleOpenNavMenu}
+                            color="inherit"
+                        >
+                            <MenuIcon />
+                        </IconButton>
+                        <Menu
+                            id="menu-appbar"
+                            anchorEl={anchorElNav}
+                            anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                            keepMounted
+                            transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                            open={Boolean(anchorElNav)}
+                            onClose={handleCloseNavMenu}
+                            sx={{ display: { xs: 'block', md: 'none' } }}
+                        >
+                            <MenuItem onClick={handleCloseNavMenu}>
+                                <Link to="/" style={{ textDecoration: 'none', color: 'black' }}>
+                                    Upload File
+                                </Link>
+                            </MenuItem>
+                            <MenuItem onClick={handleCloseNavMenu}>
+                                <Link to="/table-list" style={{ textDecoration: 'none', color: 'black' }}>
+                                    Documents
+                                </Link>
+                            </MenuItem>
+                        </Menu>
+                    </Box>
+
+                    <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' }, gap: '25px' }}>
+                        <Link
+                            to="/"
+                            style={{
+                                color: 'white',
+                                textDecoration: 'none',
+                                fontWeight: 600,
+                                fontSize: "18px"
+                            }}
+                        >
+                            Upload File
+                        </Link>
+                        <Link
+                            to="/table-list"
+                            style={{
+                                color: 'white',
+                                textDecoration: 'none',
+                                fontWeight: 600,
+                                fontSize: "18px",
+
+                            }}
+                        >
+                            Documents
+                        </Link>
+                    </Box>
+                </Toolbar>
+            </Container>
+        </AppBar>
     );
-};
+}
 
 export default Navbar;
