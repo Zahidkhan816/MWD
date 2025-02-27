@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import {
     Box, Typography, Paper, LinearProgress, IconButton, Grid, Button,
@@ -29,7 +29,6 @@ const FileUpload = () => {
         setFiles(csvFiles);
         csvFiles.forEach(file => handleFileUpload(file));
     }, []);
-    
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
         accept: ".csv",
@@ -53,29 +52,35 @@ const FileUpload = () => {
         };
     
         reader.onloadend = () => {
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: (result) => {
-                    setCsvData(result.data);
-                    toast.success("CSV file parsed successfully!");
-                },
-                error: () => {
-                    toast.error("Error parsing CSV file.");
-                },
-            });
+            try {
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: (result) => {
+                        setCsvData(result.data);
+                        toast.success("CSV file parsed successfully!");
+                    },
+                    error: (err) => {
+                        toast.error("Error parsing CSV file: " + err.message);
+                    },
+                });
+            } catch (error) {
+                toast.error("File reading error: " + error.message);
+            }
         };
     
         reader.readAsText(file);
     };
-    
+
+    useEffect(() => {
+        if (csvData) {
+            invokeLambda();
+        }
+    }, [csvData]);
 
     const invokeLambda = async () => {
-        if (!csvData) {
-            toast.warn("Please upload a CSV file first.");
-            return;
-        }
-    
+        if (!csvData) return;
+
         setLoading(true);
     
         try {
@@ -93,7 +98,7 @@ const FileUpload = () => {
                 credentials,
             });
     
-            const payload = { data: csvData };
+            const payload = { data: csvData ,filename:"doctors"}
     
             const command = new InvokeCommand({
                 FunctionName: process.env.REACT_APP_FUNCTION_NAME,
@@ -108,44 +113,28 @@ const FileUpload = () => {
             }
     
             const decodedPayload = new TextDecoder().decode(response.Payload);
-    
-            let parsedResponse;
-            try {
-                parsedResponse = JSON.parse(decodedPayload);
-            } catch (parseError) {
-                console.error("Failed to parse Lambda response:", parseError);
-                throw new Error("Invalid response format from Lambda function.");
-            }
-    
-            let responseBody;
-            try {
-                responseBody = JSON.parse(parsedResponse.body);
-            } catch (bodyParseError) {
-                console.error("Failed to parse Lambda response body:", bodyParseError);
-                throw new Error("Invalid body in Lambda response.");
-            }
+            const parsedResponse = JSON.parse(decodedPayload);
+            const responseBody = JSON.parse(parsedResponse.body);
     
             setResponse(responseBody);
             console.log("Lambda Response Body:", responseBody);
             toast.success("Duplicates checked successfully!");
         } catch (error) {
             console.error("Lambda Invocation Error:", error);
-            toast.error(error.message || "Failed to process request. Check logs.");
+            toast.error(error.message || "Failed to process request.");
             setResponse({ error: error.message });
         } finally {
             setLoading(false);
         }
     };
-    
-
 
     const handleDelete = (index) => {
         const newFiles = files.filter((_, i) => i !== index);
         setFiles(newFiles);
-        if (newFiles.length === 0) setCsvData();
-        setFiles()
-        setResponse();
-
+        if (newFiles.length === 0) {
+            setCsvData(null);
+            setResponse(null);
+        }
     };
 
     return (
@@ -206,7 +195,7 @@ const FileUpload = () => {
                 <Grid item xs={12} md={7}>
 
 
-                    {csvData && (
+                    {/* {csvData && (
                         <Box mt={3}>
                             <Typography variant="h6">CSV Data:</Typography>
                             <Paper sx={{ p: 2, maxHeight: 200, overflow: "auto", backgroundColor: "#f9f9f9" }}>
@@ -222,7 +211,7 @@ const FileUpload = () => {
                                 {loading ? <CircularProgress size={24} color="inherit" /> : "Upload"}
                             </Button>
                         </Box>
-                    )}
+                    )} */}
 
 
                     <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
