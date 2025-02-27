@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { storage, ref, listAll, getDownloadURL, db } from './firebaseConfig';
-import { getMetadata } from "firebase/storage";
+import React, { useState, useEffect } from "react";
+import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 import {
   Card,
   CardContent,
@@ -12,80 +11,51 @@ import {
   TableRow,
   Grid,
   Button,
-  CircularProgress
-} from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+  CircularProgress,
+} from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import { toast } from "react-toastify";
 
 const TableList = () => {
   const [documents, setDocuments] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-  
-  
-    fetchDocuments();
-  }, []);
-  
-  const fetchDocuments = async () => {
+
+
+  const invokeLambda = async () => {
+    setLoading(true)
     try {
-      const storageRef = ref(storage, 'uploads/');
-      const res = await listAll(storageRef);
+      const lambdaClient = new LambdaClient({
+        region: process.env.REACT_APP_REGION_NAME,
+        credentials: {
+          accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID_F,
+          secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY_F,
+        },
+      });
 
-      const documentData = await Promise.all(
-        res.items.map(async (itemRef) => {
-          try {
-            const metadata = await getMetadata(itemRef);
-            const fileUrl = await getDownloadURL(itemRef);
-            const createdDate = new Date(metadata.timeCreated);
-            const formattedDate = createdDate.toLocaleDateString();
-            const formattedTime = createdDate.toLocaleTimeString('en-US', {
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-            });
-
-            return {
-              name: itemRef.name.split('.')[0],
-              fileName: itemRef.name,
-              fileSize: formatFileSize(metadata.size),
-              date: formattedDate,
-              time: formattedTime,
-              timestamp: createdDate.getTime(), 
-              url: fileUrl,
-            };
-          } catch (error) {
-            console.error('Error fetching metadata:', error);
-            return null;
-          }
-        })
-      );
-
-      const sortedDocuments = documentData
-        .filter((doc) => doc !== null)
-        .sort((a, b) => b.timestamp - a.timestamp);
-
-      setDocuments(sortedDocuments);
+      const command = new InvokeCommand({
+        FunctionName: "getallcsv",
+        InvocationType: "RequestResponse",
+        Payload: "",
+      });
+      const response = await lambdaClient.send(command);
+      const responsePayload = new TextDecoder().decode(response.Payload);
+      const parsedResponse = JSON.parse(responsePayload);
+      setDocuments(parsedResponse?.body)
+      setLoading(false)
     } catch (error) {
-      console.error('Error fetching documents:', error);
-    } finally {
-      setLoading(false);
+      console.error("Lambda Invocation Error:", error);
+      setLoading(false)
     }
   };
-  const formatFileSize = (bytes) => {
-    if (bytes < 1024) return `${bytes} B`;
-    const units = ['KB', 'MB', 'GB'];
-    let i = 0;
-    let size = bytes / 1024;
-    while (size > 1024 && i < units.length - 1) {
-      size /= 1024;
-      i++;
-    }
-    return `${size.toFixed(2)} ${units[i]}`;
-  };
-  const fetchReportData = (docId) => {
-    navigate(`/report/${docId}`);
-  };
+
+
+
+  useEffect(() => {
+    invokeLambda();
+  }, []);
+
 
   return (
     <Grid container justifyContent="center" alignItems="center" sx={{ p: 1 }}>
@@ -96,18 +66,18 @@ const TableList = () => {
               variant="h5"
               sx={{ color: "#344054", fontWeight: 500, textAlign: "center", marginBottom: 2 }}
             >
-              Documents List
+              Documents History
             </Typography>
             <div style={{ overflowX: "auto" }}>
-              <Table sx={{ minWidth: 700, overflowX: "auto" }} aria-label="custom pagination table">
+              <Table sx={{ minWidth: 700 }} aria-label="custom pagination table">
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ color: "#667085", fontWeight: 600 }}>Name</TableCell>
-                    <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>File Name</TableCell>
-                    <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>File Size</TableCell>
-                    <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Date</TableCell>
-                    <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Time</TableCell>
-                    <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Actions</TableCell>
+                    <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Name</TableCell>
+                    <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Duplicates</TableCell>
+                    <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Duplicate File</TableCell>
+                    <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Clean File</TableCell>
+                    <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Timestamp</TableCell>
+                    {/* <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Actions</TableCell> */}
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -120,20 +90,16 @@ const TableList = () => {
                   ) : documents.length > 0 ? (
                     documents.map((doc, index) => (
                       <TableRow key={index} hover>
-                        <TableCell sx={{ fontWeight: 500 }}>{doc.name}</TableCell>
-                        <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>
-                          {doc.fileName}
-                        </TableCell>
-                        <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>
-                          {doc.fileSize}
-                        </TableCell>
-                        <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>
-                          {doc.date}
-                        </TableCell>
-                        <TableCell align="center" sx={{ color: "#344054", fontWeight: 500 }}>
-                          {doc.time}
+                        <TableCell align="center">{doc.filename}</TableCell>
+                        <TableCell align="center">{doc.duplicate_count}</TableCell>
+                        <TableCell align="center">
+                          <a href={doc.duplicate_file_url} style={{color:"green"}} target="_blank" rel="noopener noreferrer">Download</a>
                         </TableCell>
                         <TableCell align="center">
+                          <a href={doc.clean_file_url} style={{color:"green"}} target="_blank" rel="noopener noreferrer">Download</a>
+                        </TableCell>
+                        <TableCell align="center">{doc.timestamp}</TableCell>
+                        {/* <TableCell align="center">
                           <button
                             style={{
                               borderRadius: "8px",
@@ -149,22 +115,20 @@ const TableList = () => {
                             }}
                             onMouseOver={(e) => (e.target.style.backgroundColor = "#115293")}
                             onMouseOut={(e) => (e.target.style.backgroundColor = "#1976d2")}
-                            onClick={() => fetchReportData(doc.name)}
+                          onClick={() => DeleteFIle(doc.uuid)}
                           >
-                            View Report
+                            Delete
                           </button>
-                        </TableCell>
-
+                        </TableCell> */}
                       </TableRow>
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        No documents available.
-                      </TableCell>
+                      <TableCell colSpan={6} align="center">No documents available.</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
+
               </Table>
             </div>
           </CardContent>
