@@ -19,6 +19,8 @@ import { toast } from "react-toastify";
 const TableList = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   const navigate = useNavigate();
 
 
@@ -55,6 +57,42 @@ const TableList = () => {
   useEffect(() => {
     invokeLambda();
   }, []);
+  const DeleteFile = async (uuid) => {
+    setDeleting(true);
+    try {
+      const lambdaClient = new LambdaClient({
+        region: process.env.REACT_APP_REGION_NAME,
+        credentials: {
+          accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID_F,
+          secretAccessKey: process.env.REACT_APP_AWS_SECRET_ACCESS_KEY_F,
+        },
+      });
+
+      const payload = JSON.stringify({ del_uuid: uuid });
+
+      const command = new InvokeCommand({
+        FunctionName: "getallcsv",
+        InvocationType: "RequestResponse",
+        Payload: new TextEncoder().encode(payload),
+      });
+
+      const response = await lambdaClient.send(command);
+      const responsePayload = new TextDecoder().decode(response.Payload);
+      const parsedResponse = JSON.parse(responsePayload);
+
+      if (parsedResponse?.statusCode === 200) {
+        toast.success("File deleted successfully.");
+        invokeLambda();
+      } else {
+        toast.error("Failed to delete file.");
+      }
+    } catch (error) {
+      console.error("Delete Error:", error);
+      toast.error("Error deleting file.");
+    } finally {
+      setDeleting(false);
+    }
+  };
 
 
   return (
@@ -77,7 +115,7 @@ const TableList = () => {
                     <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Duplicate File</TableCell>
                     <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Clean File</TableCell>
                     <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Timestamp</TableCell>
-                    {/* <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Actions</TableCell> */}
+                    <TableCell align="center" sx={{ color: "#667085", fontWeight: 600 }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -99,7 +137,7 @@ const TableList = () => {
                           <a href={doc.clean_file_url} style={{color:"green"}} target="_blank" rel="noopener noreferrer">Download</a>
                         </TableCell>
                         <TableCell align="center">{doc.timestamp}</TableCell>
-                        {/* <TableCell align="center">
+                         <TableCell align="center">
                           <button
                             style={{
                               borderRadius: "8px",
@@ -115,11 +153,11 @@ const TableList = () => {
                             }}
                             onMouseOver={(e) => (e.target.style.backgroundColor = "#115293")}
                             onMouseOut={(e) => (e.target.style.backgroundColor = "#1976d2")}
-                          onClick={() => DeleteFIle(doc.uuid)}
+                          onClick={() => DeleteFile(doc.uuid)}
                           >
                             Delete
                           </button>
-                        </TableCell> */}
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (
