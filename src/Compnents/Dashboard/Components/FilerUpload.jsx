@@ -13,7 +13,7 @@ import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 
 const FileUpload = () => {
     const [files, setFiles] = useState([]);
-    const [csvData, setCsvData] = useState({ existingData: null, newData: null });
+    const [csvData, setCsvData] = useState({ existingData: [], newData: [] });
     const [uploadProgress, setUploadProgress] = useState({});
     const [response, setResponse] = useState(null);
     const [filename, setFileName] = useState();
@@ -30,7 +30,8 @@ const FileUpload = () => {
         setFiles(csvFiles);
         const fileNameWithoutExtension = csvFiles[0]?.name.split('.').slice(0, -1).join('.') || csvFiles[0]?.name;
         setFileName(fileNameWithoutExtension);
-        
+
+        // Parse both files (assuming one is 'existing' and one is 'new')
         csvFiles.forEach(file => handleFileUpload(file));
     }, []);
 
@@ -81,13 +82,13 @@ const FileUpload = () => {
     };
 
     useEffect(() => {
-        if (csvData.existingData && csvData.newData) {
+        if (csvData.existingData.length && csvData.newData.length) {
             invokeLambda();
         }
     }, [csvData]);
 
     const invokeLambda = async () => {
-        if (!csvData.existingData || !csvData.newData) return;
+        if (!csvData.existingData.length || !csvData.newData.length) return;
 
         setLoading(true);
 
@@ -106,12 +107,14 @@ const FileUpload = () => {
                 credentials,
             });
 
+            // Prepare the payload
             const payload = {
                 existing_data: csvData.existingData,
                 new_data: csvData.newData,
                 filename: filename,
             };
 
+            // Call the Lambda function
             const command = new InvokeCommand({
                 FunctionName: process.env.REACT_APP_FUNCTION_NAME,
                 InvocationType: "RequestResponse",
@@ -143,7 +146,7 @@ const FileUpload = () => {
         const newFiles = files.filter((_, i) => i !== index);
         setFiles(newFiles);
         if (newFiles.length === 0) {
-            setCsvData({ existingData: null, newData: null });
+            setCsvData({ existingData: [], newData: [] });
             setResponse(null);
         }
     };
