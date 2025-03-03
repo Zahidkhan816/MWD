@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import {
-    Box, Typography, Paper, LinearProgress, IconButton, Grid, Button,
-    Table, TableBody, TableCell, TableHead, TableRow, CircularProgress, TableContainer
+    Box, Typography, Paper, LinearProgress, IconButton, Grid, CircularProgress, Table, 
+    TableBody, TableCell, TableHead, TableRow, TableContainer
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import UploadIcon from "../../Assets/UploadIcon2.png";
@@ -13,23 +13,25 @@ import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 
 const FileUpload = () => {
     const [files, setFiles] = useState([]);
-    const [csvData, setCsvData] = useState(null);
+    const [csvData, setCsvData] = useState({ existingData: [], newData: [] });
     const [uploadProgress, setUploadProgress] = useState({});
     const [response, setResponse] = useState(null);
-    const [filename, setFileName] = useState()
+    const [filename, setFileName] = useState();
     const [loading, setLoading] = useState(false);
 
     const onDrop = useCallback((acceptedFiles) => {
         const csvFiles = acceptedFiles.filter(file => file.name.endsWith(".csv"));
-        const fileNameWithoutExtension = csvFiles[0]?.name.split('.').slice(0, -1).join('.') || csvFiles[0]?.name;
 
-        if (csvFiles.length === 0) {
-            toast.error("Only CSV files are accepted.");
+        if (csvFiles.length !== 2) {
+            toast.error("Please upload exactly two CSV files.");
             return;
         }
 
         setFiles(csvFiles);
-        setFileName(fileNameWithoutExtension)
+        const fileNameWithoutExtension = csvFiles[0]?.name.split('.').slice(0, -1).join('.') || csvFiles[0]?.name;
+        setFileName(fileNameWithoutExtension);
+
+        // Parse both files (assuming one is 'existing' and one is 'new')
         csvFiles.forEach(file => handleFileUpload(file));
     }, []);
 
@@ -43,7 +45,6 @@ const FileUpload = () => {
             toast.error("Only CSV files are accepted.");
             return;
         }
-    
 
         setUploadProgress((prev) => ({ ...prev, [file.name]: 0 }));
 
@@ -61,9 +62,12 @@ const FileUpload = () => {
                     header: true,
                     skipEmptyLines: true,
                     complete: (result) => {
-                        setCsvData(result.data);
-                        
-                        toast.success("CSV file parsed successfully!");
+                        if (file.name.includes("existing")) {
+                            setCsvData((prev) => ({ ...prev, existingData: result.data }));
+                        } else if (file.name.includes("new")) {
+                            setCsvData((prev) => ({ ...prev, newData: result.data }));
+                        }
+                        toast.success(`${file.name} parsed successfully!`);
                     },
                     error: (err) => {
                         toast.error("Error parsing CSV file: " + err.message);
@@ -78,15 +82,13 @@ const FileUpload = () => {
     };
 
     useEffect(() => {
-        if (csvData) {
+        if (csvData.existingData.length && csvData.newData.length) {
             invokeLambda();
         }
     }, [csvData]);
 
     const invokeLambda = async () => {
-        console.log(filename,"filename ")
-        if (!csvData) return;
-
+// lamda function here
         setLoading(true);
 
         try {
@@ -104,26 +106,32 @@ const FileUpload = () => {
                 credentials,
             });
 
-            const payload = { data: csvData, filename:filename }
+            // Prepare the payload
+            const payload = {
+                existing_data: csvData.existingData,
+                new_data: csvData.newData,
+                filename: filename,
+            };
 
+            console.log(payload,"payload is here )
             const command = new InvokeCommand({
                 FunctionName: process.env.REACT_APP_FUNCTION_NAME,
                 InvocationType: "RequestResponse",
                 Payload: JSON.stringify(payload),
             });
 
-            const response = await lambdaClient.send(command);
+            const lambdaResponse = await lambdaClient.send(command);
 
-            if (!response.Payload) {
+            if (!lambdaResponse.Payload) {
                 throw new Error("No payload received from Lambda.");
             }
 
-            const decodedPayload = new TextDecoder().decode(response.Payload);
+            const decodedPayload = new TextDecoder().decode(lambdaResponse.Payload);
             const parsedResponse = JSON.parse(decodedPayload);
             const responseBody = JSON.parse(parsedResponse.body);
             setResponse(responseBody);
-            console.log("Lambda Response Body:", responseBody);
-            toast.success("Duplicates checked successfully!");
+
+            toast.success("API processed successfully!");
         } catch (error) {
             console.error("Lambda Invocation Error:", error);
             toast.error(error.message || "Failed to process request.");
@@ -137,7 +145,7 @@ const FileUpload = () => {
         const newFiles = files.filter((_, i) => i !== index);
         setFiles(newFiles);
         if (newFiles.length === 0) {
-            setCsvData(null);
+            setCsvData({ existingData: [], newData: [] });
             setResponse(null);
         }
     };
@@ -150,7 +158,7 @@ const FileUpload = () => {
                         Documents
                     </Typography>
                     <Typography variant="body2" color="#667085">
-                        Upload documents relevant to your business. EchoWin will automatically process them.
+                        Upload documents relevant to your business. EchoWin will automatically process them...
                     </Typography>
                     <Box sx={{ width: "100%", padding: "20px" }}>
                         <Paper
@@ -175,12 +183,11 @@ const FileUpload = () => {
                                         <span style={{ color: "#40C4FF", fontWeight: "500" }}>Click to upload</span> or drag and drop
                                     </Typography>
                                     <Typography variant="caption" color="textSecondary">
-                                        CSV files only
+                                        CSV files only (2 files required)
                                     </Typography>
                                     {files?.length > 0 && uploadProgress[files[0].name] !== undefined && (
                                         <LinearProgress variant="determinate" value={uploadProgress[files[0].name]} sx={{ mt: 1 }} />
                                     )}
-
                                 </Box>
                             )}
                         </Paper>
@@ -198,27 +205,6 @@ const FileUpload = () => {
                     </Box>
                 </Grid>
                 <Grid item xs={12} md={7}>
-
-
-                    {/* {csvData && (
-                        <Box mt={3}>
-                            <Typography variant="h6">CSV Data:</Typography>
-                            <Paper sx={{ p: 2, maxHeight: 200, overflow: "auto", backgroundColor: "#f9f9f9" }}>
-                                <pre>{JSON.stringify(csvData, null, 2)}</pre>
-                            </Paper>
-                            <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={invokeLambda}
-                                disabled={!csvData || loading}
-                                sx={{ mt: 2 }}
-                            >
-                                {loading ? <CircularProgress size={24} color="inherit" /> : "Upload"}
-                            </Button>
-                        </Box>
-                    )} */}
-
-
                     <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
                         <Table>
                             <TableHead>
@@ -230,7 +216,6 @@ const FileUpload = () => {
                                     <TableCell align="center">Clean File URL</TableCell>
                                 </TableRow>
                             </TableHead>
-
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
@@ -266,7 +251,6 @@ const FileUpload = () => {
                             </TableBody>
                         </Table>
                     </TableContainer>
-
                 </Grid>
             </Grid>
             <ToastContainer />
@@ -275,4 +259,3 @@ const FileUpload = () => {
 };
 
 export default FileUpload;
-// uploade
