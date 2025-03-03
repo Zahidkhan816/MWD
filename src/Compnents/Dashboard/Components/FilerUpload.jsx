@@ -114,7 +114,7 @@ const FileUpload = () => {
                 filename: filename,
             };
 
-            // Call the Lambda function
+            console.log(payload,"payload is here )
             const command = new InvokeCommand({
                 FunctionName: process.env.REACT_APP_FUNCTION_NAME,
                 InvocationType: "RequestResponse",
