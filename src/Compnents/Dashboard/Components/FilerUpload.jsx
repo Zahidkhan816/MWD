@@ -88,8 +88,7 @@ const FileUpload = () => {
     }, [csvData]);
 
     const invokeLambda = async () => {
-        if (!csvData.existingData.length || !csvData.newData.length) return;
-
+// lamda function here
         setLoading(true);
 
         try {
@@ -159,7 +158,7 @@ const FileUpload = () => {
                         Documents
                     </Typography>
                     <Typography variant="body2" color="#667085">
-                        Upload documents relevant to your business. EchoWin will automatically process them.
+                        Upload documents relevant to your business. EchoWin will automatically process them...
                     </Typography>
                     <Box sx={{ width: "100%", padding: "20px" }}>
                         <Paper
