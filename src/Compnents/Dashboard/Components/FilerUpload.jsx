@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { useDropzone } from "react-dropzone";
 import {
-    Box, Typography, Paper, LinearProgress, IconButton, Grid, Button,
-    Table, TableBody, TableCell, TableHead, TableRow, CircularProgress, TableContainer
+    Box, Typography, Paper, LinearProgress, IconButton, Grid, CircularProgress, Table, 
+    TableBody, TableCell, TableHead, TableRow, TableContainer
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import UploadIcon from "../../Assets/UploadIcon2.png";
@@ -118,18 +118,18 @@ console.log(payload,"pylod")
                 Payload: JSON.stringify(payload),
             });
 
-            const response = await lambdaClient.send(command);
+            const lambdaResponse = await lambdaClient.send(command);
 
-            if (!response.Payload) {
+            if (!lambdaResponse.Payload) {
                 throw new Error("No payload received from Lambda.");
             }
 
-            const decodedPayload = new TextDecoder().decode(response.Payload);
+            const decodedPayload = new TextDecoder().decode(lambdaResponse.Payload);
             const parsedResponse = JSON.parse(decodedPayload);
             const responseBody = JSON.parse(parsedResponse.body);
             setResponse(responseBody);
-            console.log("Lambda Response Body:", responseBody);
-            toast.success("Duplicates checked successfully!");
+
+            toast.success("API processed successfully!");
         } catch (error) {
             console.error("Lambda Invocation Error:", error);
             toast.error(error.message || "Failed to process request.");
@@ -215,7 +215,6 @@ console.log(payload,"pylod")
                                     <TableCell align="center">Clean File URL</TableCell>
                                 </TableRow>
                             </TableHead>
-
                             <TableBody>
                                 {loading ? (
                                     <TableRow>
