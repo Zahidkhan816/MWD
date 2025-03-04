@@ -13,26 +13,26 @@ import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
 
 const FileUpload = () => {
     const [files, setFiles] = useState([]);
-    const [csvData, setCsvData] = useState({ existingData: [], newData: [] });
+    const [csvData, setCsvData] = useState({ existingData: null, newData: null });
     const [uploadProgress, setUploadProgress] = useState({});
     const [response, setResponse] = useState(null);
-    const [filename, setFileName] = useState();
+    const [filename, setFileName] = useState("");
     const [loading, setLoading] = useState(false);
 
     const onDrop = useCallback((acceptedFiles) => {
-        const csvFiles = acceptedFiles.filter(file => file.name.endsWith(".csv"));
-
-        if (csvFiles.length !== 2) {
-            toast.error("Please upload exactly two CSV files.");
+        if (acceptedFiles.length !== 2) {
+            toast.error("Please upload exactly two files.");
             return;
         }
 
-        setFiles(csvFiles);
-        const fileNameWithoutExtension = csvFiles[0]?.name.split('.').slice(0, -1).join('.') || csvFiles[0]?.name;
+        const fileNameWithoutExtension = acceptedFiles[0].name.split('.').slice(0, -1).join('.') || acceptedFiles[0].name;
         setFileName(fileNameWithoutExtension);
 
-        // Parse both files (assuming one is 'existing' and one is 'new')
-        csvFiles.forEach(file => handleFileUpload(file));
+        const [file1, file2] = acceptedFiles;
+        setFiles(acceptedFiles);
+        
+        handleFileUpload(file1, 'existingData');
+        handleFileUpload(file2, 'newData');
     }, []);
 
     const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -40,7 +40,7 @@ const FileUpload = () => {
         onDrop,
     });
 
-    const handleFileUpload = (file) => {
+    const handleFileUpload = (file, dataType) => {
         if (!file || !file.name.endsWith(".csv")) {
             toast.error("Only CSV files are accepted.");
             return;
@@ -62,15 +62,14 @@ const FileUpload = () => {
                     header: true,
                     skipEmptyLines: true,
                     complete: (result) => {
-                        if (file.name.includes("existing")) {
-                            setCsvData((prev) => ({ ...prev, existingData: result.data }));
-                        } else if (file.name.includes("new")) {
-                            setCsvData((prev) => ({ ...prev, newData: result.data }));
-                        }
-                        toast.success(`${file.name} parsed successfully!`);
+                        setCsvData((prevData) => ({
+                            ...prevData,
+                            [dataType]: result.data
+                        }));
+                        toast.success(`${dataType === 'existingData' ? 'Existing' : 'New'} CSV file parsed successfully!`);
                     },
                     error: (err) => {
-                        toast.error("Error parsing CSV file: " + err.message);
+                        toast.error(`Error parsing ${dataType === 'existingData' ? 'existing' : 'new'} CSV file: ${err.message}`);
                     },
                 });
             } catch (error) {
@@ -82,13 +81,14 @@ const FileUpload = () => {
     };
 
     useEffect(() => {
-        if (csvData.existingData.length && csvData.newData.length) {
+        if (csvData.existingData && csvData.newData) {
             invokeLambda();
         }
     }, [csvData]);
 
     const invokeLambda = async () => {
-// lamda function here
+        if (!csvData.existingData || !csvData.newData) return;
+
         setLoading(true);
 
         try {
@@ -106,14 +106,12 @@ const FileUpload = () => {
                 credentials,
             });
 
-            // Prepare the payload
             const payload = {
                 existing_data: csvData.existingData,
                 new_data: csvData.newData,
-                filename: filename,
+                filename: filename
             };
-
-            console.log(payload,"payload is here )
+console.log(payload,"pylod")
             const command = new InvokeCommand({
                 FunctionName: process.env.REACT_APP_FUNCTION_NAME,
                 InvocationType: "RequestResponse",
@@ -145,7 +143,7 @@ const FileUpload = () => {
         const newFiles = files.filter((_, i) => i !== index);
         setFiles(newFiles);
         if (newFiles.length === 0) {
-            setCsvData({ existingData: [], newData: [] });
+            setCsvData({ existingData: null, newData: null });
             setResponse(null);
         }
     };
@@ -158,7 +156,7 @@ const FileUpload = () => {
                         Documents
                     </Typography>
                     <Typography variant="body2" color="#667085">
-                        Upload documents relevant to your business. EchoWin will automatically process them...
+                        Upload two CSV documents. EchoWin will process them.
                     </Typography>
                     <Box sx={{ width: "100%", padding: "20px" }}>
                         <Paper
@@ -183,7 +181,7 @@ const FileUpload = () => {
                                         <span style={{ color: "#40C4FF", fontWeight: "500" }}>Click to upload</span> or drag and drop
                                     </Typography>
                                     <Typography variant="caption" color="textSecondary">
-                                        CSV files only (2 files required)
+                                        CSV files only (Upload exactly two files)
                                     </Typography>
                                     {files?.length > 0 && uploadProgress[files[0].name] !== undefined && (
                                         <LinearProgress variant="determinate" value={uploadProgress[files[0].name]} sx={{ mt: 1 }} />
@@ -204,6 +202,7 @@ const FileUpload = () => {
                         ))}
                     </Box>
                 </Grid>
+
                 <Grid item xs={12} md={7}>
                     <TableContainer component={Paper} sx={{ overflowX: "auto" }}>
                         <Table>
