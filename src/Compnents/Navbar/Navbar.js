@@ -26,7 +26,7 @@ function Navbar() {
 
     const getLinkStyle = (path) => {
         return location.pathname === path
-            ? { color: 'black', fontWeight: 'bold', textDecoration: 'none', fontWeight: 600, fontSize: "18px" }
+            ? { color: 'black', fontWeight: 'bold', textDecoration: 'underline', fontWeight: 600, fontSize: "18px" }
             : { color: 'White', textDecoration: 'none', fontWeight: 600, fontSize: "18px" };
     };
 
