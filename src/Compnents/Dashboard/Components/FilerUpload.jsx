@@ -6,6 +6,7 @@ import {
   Paper,
   LinearProgress,
   IconButton,
+  Button,
   Grid,
   CircularProgress,
   Table,
@@ -21,7 +22,7 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Papa from "papaparse";
 import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
-
+import SendIcon from "@mui/icons-material/Send";
 const FileUpload = () => {
   const [files, setFiles] = useState([]);
   const [csvData, setCsvData] = useState({ existingData: null, newData: null });
@@ -31,21 +32,23 @@ const FileUpload = () => {
   const [loading, setLoading] = useState(false);
 
   const onDrop = useCallback((acceptedFiles) => {
-    if (acceptedFiles.length !== 2) {
-      toast.error("Please upload exactly two files.");
+    if (acceptedFiles.length === 0) {
+      toast.error("Please upload at least one CSV file.");
       return;
     }
 
-    const fileNameWithoutExtension =
-      acceptedFiles[1].name.split(".").slice(0, -1).join(".") ||
-      acceptedFiles[0].name;
-    setFileName(fileNameWithoutExtension);
-
-    const [file1, file2] = acceptedFiles;
     setFiles(acceptedFiles);
 
-    handleFileUpload(file1, "existingData");
-    handleFileUpload(file2, "newData");
+    acceptedFiles.forEach((file, index) => {
+      const dataType = index === 0 ? "existingData" : "newData"; // Assign first file to `existingData`, second to `newData`
+      handleFileUpload(file, dataType);
+    });
+
+    // Set filename based on the first file
+    const fileNameWithoutExtension =
+      acceptedFiles[0].name.split(".").slice(0, -1).join(".") ||
+      acceptedFiles[0].name;
+    setFileName(fileNameWithoutExtension);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -101,14 +104,14 @@ const FileUpload = () => {
     reader.readAsText(file);
   };
 
-  useEffect(() => {
-    if (csvData.existingData && csvData.newData) {
-      invokeLambda();
-    }
-  }, [csvData]);
+  // useEffect(() => {
+  //   if (csvData.existingData || csvData.newData) {
+  //     invokeLambda();
+  //   }
+  // }, [csvData]);
 
   const invokeLambda = async () => {
-    if (!csvData.existingData || !csvData.newData) return;
+    if (!csvData.existingData && !csvData.newData) return; // Ensure at least one file is processed
 
     setLoading(true);
 
@@ -130,11 +133,13 @@ const FileUpload = () => {
       });
 
       const payload = {
-        existing_data: csvData.existingData,
-        new_data: csvData.newData,
+        existing_data: csvData.existingData || [], // Ensure empty array if null
+        new_data: csvData.newData || [], // Ensure empty array if null
         filename: filename,
       };
-      console.log(payload, "pylod");
+
+      console.log(payload, "Payload being sent to Lambda");
+
       const command = new InvokeCommand({
         FunctionName: process.env.REACT_APP_FUNCTION_NAME,
         InvocationType: "RequestResponse",
@@ -227,6 +232,7 @@ const FileUpload = () => {
                 </Box>
               )}
             </Paper>
+
             {files?.map((file, index) => (
               <Paper
                 key={index}
@@ -245,6 +251,18 @@ const FileUpload = () => {
                 </IconButton>
               </Paper>
             ))}
+
+            {/* Align Button to Right */}
+            <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={invokeLambda}
+                endIcon={<SendIcon />}
+              >
+                Upload
+              </Button>
+            </Box>
           </Box>
         </Grid>
 
