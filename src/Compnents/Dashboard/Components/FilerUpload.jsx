@@ -30,26 +30,27 @@ const FileUpload = () => {
   const [response, setResponse] = useState(null);
   const [filename, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
+  const onDrop = useCallback(
+    (acceptedFiles) => {
+      if (acceptedFiles.length === 0) {
+        toast.error("Please upload at least one CSV file.");
+        return;
+      }
 
-  const onDrop = useCallback((acceptedFiles) => {
-    if (acceptedFiles.length === 0) {
-      toast.error("Please upload at least one CSV file.");
-      return;
-    }
+      setFiles((prevFiles) => [...prevFiles, ...acceptedFiles]);
 
-    setFiles(acceptedFiles);
+      acceptedFiles.forEach((file, index) => {
+        const dataType = files.length === 0 ? "existingData" : "newData";
+        handleFileUpload(file, dataType);
+      });
 
-    acceptedFiles.forEach((file, index) => {
-      const dataType = index === 0 ? "existingData" : "newData"; // Assign first file to `existingData`, second to `newData`
-      handleFileUpload(file, dataType);
-    });
-
-    // Set filename based on the first file
-    const fileNameWithoutExtension =
-      acceptedFiles[0].name.split(".").slice(0, -1).join(".") ||
-      acceptedFiles[0].name;
-    setFileName(fileNameWithoutExtension);
-  }, []);
+      const fileNameWithoutExtension =
+        acceptedFiles[0].name.split(".").slice(0, -1).join(".") ||
+        acceptedFiles[0].name;
+      setFileName(fileNameWithoutExtension);
+    },
+    [files]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: ".csv",
@@ -82,11 +83,7 @@ const FileUpload = () => {
               ...prevData,
               [dataType]: result.data,
             }));
-            toast.success(
-              `${
-                dataType === "existingData" ? "Existing" : "New"
-              } CSV file parsed successfully!`
-            );
+            toast.success(`CSV file parsed successfully!`);
           },
           error: (err) => {
             toast.error(
@@ -111,7 +108,7 @@ const FileUpload = () => {
   // }, [csvData]);
 
   const invokeLambda = async () => {
-    if (!csvData.existingData && !csvData.newData) return; // Ensure at least one file is processed
+    if (!csvData.existingData && !csvData.newData) return;
 
     setLoading(true);
 
@@ -133,8 +130,8 @@ const FileUpload = () => {
       });
 
       const payload = {
-        existing_data: csvData.existingData || [], // Ensure empty array if null
-        new_data: csvData.newData || [], // Ensure empty array if null
+        existing_data: csvData.existingData || [],
+        new_data: csvData.newData || [],
         filename: filename,
       };
 
@@ -157,7 +154,7 @@ const FileUpload = () => {
       const responseBody = JSON.parse(parsedResponse.body);
       setResponse(responseBody);
 
-      toast.success("API processed successfully!");
+      toast.success("Data processed successfully!");
     } catch (error) {
       console.error("Lambda Invocation Error:", error);
       toast.error(error.message || "Failed to process request.");
