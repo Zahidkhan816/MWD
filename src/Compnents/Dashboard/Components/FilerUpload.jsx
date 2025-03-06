@@ -30,27 +30,28 @@ const FileUpload = () => {
   const [response, setResponse] = useState(null);
   const [filename, setFileName] = useState("");
   const [loading, setLoading] = useState(false);
-  const onDrop = useCallback(
-    (acceptedFiles) => {
-      if (acceptedFiles.length === 0) {
-        toast.error("Please upload at least one CSV file.");
-        return;
-      }
+  const onDrop = useCallback((acceptedFiles) => {
+    if (acceptedFiles.length === 0) {
+      toast.error("Please upload at least one CSV file.");
+      return;
+    }
 
-      setFiles((prevFiles) => [...prevFiles, ...acceptedFiles]);
+    setFiles((prevFiles) => {
+      const updatedFiles = [...prevFiles, ...acceptedFiles];
 
-      acceptedFiles.forEach((file, index) => {
-        const dataType = files.length === 0 ? "existingData" : "newData";
+      updatedFiles.forEach((file, index) => {
+        const dataType = index === 0 ? "existingData" : "newData";
         handleFileUpload(file, dataType);
       });
 
-      const fileNameWithoutExtension =
-        acceptedFiles[0].name.split(".").slice(0, -1).join(".") ||
-        acceptedFiles[0].name;
-      setFileName(fileNameWithoutExtension);
-    },
-    [files]
-  );
+      return updatedFiles;
+    });
+
+    const fileNameWithoutExtension =
+      acceptedFiles[0].name.split(".").slice(0, -1).join(".") ||
+      acceptedFiles[0].name;
+    setFileName(fileNameWithoutExtension);
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: ".csv",
@@ -72,7 +73,6 @@ const FileUpload = () => {
         setUploadProgress((prev) => ({ ...prev, [file.name]: percent }));
       }
     };
-
     reader.onloadend = () => {
       try {
         Papa.parse(file, {
@@ -83,7 +83,10 @@ const FileUpload = () => {
               ...prevData,
               [dataType]: result.data,
             }));
-            toast.success(`CSV file parsed successfully!`);
+            // if (!toastShown[dataType]) {
+            //   toast.success(`CSV file parsed successfully!`);
+            //   setToastShown((prev) => ({ ...prev, [dataType]: true }));
+            // }
           },
           error: (err) => {
             toast.error(
@@ -108,10 +111,14 @@ const FileUpload = () => {
   // }, [csvData]);
 
   const invokeLambda = async () => {
+    if (files.length > 2) {
+      toast.error("Max two files can be uploaded");
+      return;
+    }
+
     if (!csvData.existingData && !csvData.newData) return;
 
     setLoading(true);
-
     try {
       const credentials = {
         accessKeyId: process.env.REACT_APP_AWS_ACCESS_KEY_ID_F,
